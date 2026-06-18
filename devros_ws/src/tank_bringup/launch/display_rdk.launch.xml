@@ -1,0 +1,150 @@
+<launch>
+    <!-- <let name="urdf_path" 
+    value="$(find-pkg-share tank_description/urdf/tank_urdf.xacro)"/> -->
+   
+   <let name="tank_description_share"
+       value="$(find-pkg-share tank_description)" />
+
+   <let name="tank_bringup_share"
+       value="$(find-pkg-share tank_bringup)" />
+
+   <let name="urdf_path"
+       value="$(var tank_description_share)/urdf/proto_tank_urdf.xacro" />
+       <!-- value="$(var tank_description_share)/urdf/tank_urdf.xacro" /> -->
+
+  <let name="rviz_config_file_path" 
+       value="$(var tank_description_share)/rviz/slam_config.rviz"/>
+       
+
+<node pkg="v4l2_camera"
+      exec="v4l2_camera_node"
+      name="camera"
+      output="screen">
+
+    <param name="video_device" value="/dev/video0"/>
+    <param name="image_size" value="[1280,720]"/>
+
+</node>
+   
+   <node pkg="robot_state_publisher" exec="robot_state_publisher">
+   <param name="robot_description" value="$(command 'xacro $(var urdf_path)')"/>
+   </node>
+
+    <node pkg="controller_manager" exec="ros2_control_node">
+    <param from="$(var tank_bringup_share)/config/tank_controllers.yaml"/>
+    </node>
+
+    <node pkg="controller_manager" exec="spawner" args="joint_state_broadcaster"/>
+
+    <node pkg="controller_manager" exec="spawner" args="diff_drive_controller"/>
+
+    <node pkg="tank_imu" exec="mpu6050_driver"/>
+
+    <node pkg="nmea_navsat_driver" exec="nmea_serial_driver" name="gps_driver" output="screen">
+    <param name="port" value="/dev/ttyAMA0"/>
+    <param name="baud" value="9600"/>
+    <param name="frame_id" value="gps_link"/>
+</node>
+
+    <!-- <node pkg="controller_manager" exec="spawner" args="gps_sensor_broadcaster"/>
+
+    <node pkg="controller_manager" exec="spawner" args="imu_sensor_broadcaster"/> -->
+
+    <!-- <node pkg="joint_state_publisher_gui" exec="joint_state_publisher_gui"/> -->
+
+    <!-- <node pkg="joy" exec="joy_node" name="primary_joy">
+    <remap from="joy" to="/commands2"/>
+    <param from="$(var tank_bringup_share)/config/joy2.yaml"/>
+    </node> -->
+
+    <!-- <node pkg="teleop_twist_joy" exec="teleop_node" name="teleop_twist_joy_2">
+    <remap from="joy" to="/commands2"/>
+    <remap from="/cmd_vel" to="/cmd_vel2"/>
+    <param from="$(var tank_bringup_share)/config/joy2.yaml"/>
+    </node> -->
+
+     <node pkg="teleop_twist_joy" exec="teleop_node" name="teleop_twist_joy">
+    <remap from="joy" to="/commands1"/>
+    <remap from="/cmd_vel" to="/cmd_vel1"/>
+    <param from="$(var tank_bringup_share)/config/joy1.yaml"/>
+    </node>
+
+    <node pkg="twist_mux" exec="twist_mux" output="screen">
+    <remap from="/cmd_vel_out" to="/cmd_vel_unstamped"/>
+    <!-- <param name="use_sim_time" value="true"/> -->
+    <param from="$(var tank_bringup_share)/config/twist_mux.yaml" />
+    </node>
+
+    <node pkg="twist_stamper" exec="twist_stamper">
+    <param name="frame_id" value=""/>
+    <remap from="/cmd_vel_in" to="/cmd_vel_unstamped"/>
+    <remap from="/cmd_vel_out" to="/diff_drive_controller/cmd_vel"/>
+    </node>
+
+
+    <node
+        pkg="rplidar_ros"
+        exec="rplidar_composition"
+        name="rplidar_node"
+        output="screen">
+
+        <param name="channel_type" value="serial"/>
+
+        <param
+            name="serial_port"
+            value="/dev/ttyUSB1"/>
+            <!-- value="/dev/serial/by-id/usb-Silicon_Labs_CP2102N_USB_to_UART_Bridge_Controller_d4a91a5b197fef118d731e1cedd322a4-if00-port0"/> -->
+
+        <param name="serial_baudrate" value="460800"/>
+
+        <param name="frame_id" value="lidar_link"/>
+
+        <param name="inverted" value="false"/>
+
+        <param name="angle_compensate" value="true"/>
+
+        <param name="scan_mode" value="Standard"/>
+
+    </node>
+        
+
+<!-- EKF LOCAL -->
+<node pkg="robot_localization"
+      exec="ekf_node"
+      name="ekf_local"
+      output="screen">
+    <param from="$(var tank_bringup_share)/config/ekf.yaml"/>
+</node>
+
+<!-- EKF GLOBAL -->
+<!-- <node pkg="robot_localization"
+      exec="ekf_node"
+      name="ekf_global"
+      output="screen">
+    <param from="$(var tank_bringup_share)/config/ekf_global.yaml"/>
+</node> -->
+    
+
+
+<include file="$(find-pkg-share slam_toolbox)/launch/online_async_launch.py">
+    <arg name="use_sim_time" value="false"/>
+    <arg name="params_file" value="$(var tank_bringup_share)/config/mapper_params_online_async.yaml"/>
+</include>
+
+<!-- WEB VIDEO SERVER -->
+<node pkg="web_video_server"
+      exec="web_video_server"
+      name="web_video_server"
+      output="screen"/>
+
+
+      <!-- ROSBRIDGE -->
+<node pkg="rosbridge_server"
+      exec="rosbridge_websocket"
+      name="rosbridge_websocket"
+      output="screen"/>
+
+
+    <!-- <node pkg="tank_diff_drive" exec="diff_drive_bridge_node" name="twist_bridge"/> -->
+
+</launch>

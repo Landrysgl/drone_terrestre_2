@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+  <title>Tank Dashboard</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet/dist/leaflet.css"
+  />
+
+  <script src="https://cdn.jsdelivr.net/npm/roslib/build/roslib.min.js"></script>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+  <div id="topbar">
+
+    <button id="videoBtn">
+       Vidéo
+    </button>
+
+    <button id="mapBtn">
+       Emplacement
+    </button>
+
+  </div>
+
+  <div id="content">
+
+    <div id="videoContainer">
+
+      <img
+        id="camera"
+        src="http://[PI_ADDRESS]:8080/stream?topic=/image_raw"
+      />
+
+    </div>
+
+    <div id="mapContainer">
+
+      <div id="map"></div>
+
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>
